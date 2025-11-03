@@ -24,6 +24,11 @@ jobs:
         with:
           sdk-version: "35"
           ndk-version: "26.1.10909125"
+          
+      - name: Init Gradle wrapper
+        working-directory: apps/Android/MnnTaoAvatar
+        run: |
+          gradle wrapper --gradle-version 8.6          
 
       - name: Build MNN TaoAvatar
         working-directory: apps/Android/MnnTaoAvatar
