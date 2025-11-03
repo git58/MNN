@@ -1,4 +1,4 @@
-name: Build MNN TaoAvatar
+name: Build MNN TaoAvatar (Samsung A34 Ready)
 
 on:
   workflow_dispatch:
@@ -10,34 +10,57 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Клонируем оригинальный репозиторий MNN
       - name: Checkout MNN
         run: git clone https://github.com/alibaba/MNN.git .
 
+      # 2. Настраиваем JDK
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Android SDK
+      # 3. Ставим Android SDK и NDK (под Dimensity / arm64-v8a)
+      - name: Setup Android SDK & NDK
         uses: android-actions/setup-android@v3
         with:
           sdk-version: "35"
           ndk-version: "26.1.10909125"
-          
-      - name: Init Gradle wrapper
-        working-directory: apps/Android/MnnTaoAvatar
-        run: |
-          gradle wrapper --gradle-version 8.6          
 
+      # 4. Кеш Gradle, чтобы повторные сборки шли быстрее
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # 5. Чистим кеш, если раньше падала сборка на Gradle 9.x
+      - name: Clean Gradle cache
+        run: rm -rf ~/.gradle/caches ~/.gradle/daemon
+
+      # 6. Инициализируем Gradle Wrapper на версии 8.6 (совместимой)
+      - name: Init Gradle wrapper (Gradle 8.6)
+        working-directory: apps/Android/MnnTaoAvatar
+        run: gradle wrapper --gradle-version 8.6
+
+      # 7. Сборка APK без демона и статистики Kotlin
       - name: Build MNN TaoAvatar
         working-directory: apps/Android/MnnTaoAvatar
+        env:
+          ORG_GRADLE_PROJECT_kotlin.daemon.enabled: false
+          ORG_GRADLE_PROJECT_android.disableAutomaticComponentCreation: true
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon --warning-mode all
 
+      # 8. Загрузка готового APK как артефакта
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MnnTaoAvatar-arm64-apk
+          name: MnnTaoAvatar-arm64-${{ github.run_id }}.apk
           path: apps/Android/MnnTaoAvatar/app/build/outputs/apk/release/*.apk
