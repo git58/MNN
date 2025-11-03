@@ -1,0 +1,43 @@
+name: Build MNN TaoAvatar
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout MNN
+        run: git clone https://github.com/alibaba/MNN.git .
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          sdk-version: "35"
+          ndk-version: "26.1.10909125"
+          
+      - name: Init Gradle wrapper
+        working-directory: apps/Android/MnnTaoAvatar
+        run: |
+          gradle wrapper --gradle-version 8.6          
+
+      - name: Build MNN TaoAvatar
+        working-directory: apps/Android/MnnTaoAvatar
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MnnTaoAvatar-arm64-apk
+          path: apps/Android/MnnTaoAvatar/app/build/outputs/apk/release/*.apk
